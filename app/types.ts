@@ -19,3 +19,13 @@ export interface EditableItem {
     price: string;
     isEditing: boolean;
 }
+
+export interface SharedReceipt {
+    id: string;
+    title: string;
+    people: Person[];
+    items: ReceiptItem[];
+    totals: { [key: string]: number };
+    grandTotal: number;
+    createdAt: string;
+}

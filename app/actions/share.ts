@@ -1,16 +1,9 @@
 "use server"
 
 import { put } from '@vercel/blob';
-import { Person, ReceiptItem } from '../types';
+import { SharedReceipt } from '../types';
 
-export interface SharedReceipt {
-    id: string;
-    people: Person[];
-    items: ReceiptItem[];
-    totals: { [key: string]: number };
-    grandTotal: number;
-    createdAt: string;
-}
+
 
 export async function publishReceipt(data: SharedReceipt): Promise<string> {
     try {

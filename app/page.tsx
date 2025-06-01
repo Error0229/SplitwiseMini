@@ -57,10 +57,10 @@ import {
   TooltipTrigger,
   TooltipProvider,
 } from "@/components/ui/tooltip";
-import { publishReceipt, SharedReceipt } from "./actions/share";
+import { publishReceipt } from "./actions/share";
 
 // Move interfaces to a separate types file
-import type { Person, ReceiptItem, EditableItem } from "./types";
+import type { Person, ReceiptItem, EditableItem, SharedReceipt } from "./types";
 const LANGUAGE_OPTIONS = [
   { code: "eng", name: "English" },
   { code: "spa", name: "Spanish" },
@@ -143,6 +143,7 @@ export default function MoneySplitApp() {
   const [unsplitItemsPageSize, setUnsplitItemsPageSize] = useState(5);
   const [isPublishing, setIsPublishing] = useState(false);
   const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
+  const [receiptTitle, setReceiptTitle] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Add person
@@ -1173,6 +1174,7 @@ export default function MoneySplitApp() {
       const id = crypto.randomUUID();
       const receiptData: SharedReceipt = {
         id,
+        title: receiptTitle || "Unnamed Receipt",
         people,
         items: receiptItems,
         totals: calculateTotals(),
@@ -1636,6 +1638,12 @@ export default function MoneySplitApp() {
 
           {/* Publish Receipt Button - New Section */}
           <div className="flex justify-end mt-4 gap-2">
+            <Input
+              placeholder="Enter receipt title"
+              value={receiptTitle}
+              onChange={(e) => setReceiptTitle(e.target.value)}
+              className="max-w-xs"
+            />
             <Button
               variant="outline"
               onClick={handlePublishReceipt}

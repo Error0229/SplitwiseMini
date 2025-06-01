@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import { SharedReceipt } from "../actions/share";
 import Image from "next/image";
 import {
   Card,
@@ -19,6 +18,7 @@ import {
   TooltipTrigger,
   TooltipProvider,
 } from "@/components/ui/tooltip";
+import { SharedReceipt } from "@/app/types";
 import crypto from "crypto";
 
 export const dynamic = "force-dynamic";
@@ -158,7 +158,7 @@ export default async function SharedReceiptPage({
           />
           <div>
             <h1 className="text-3xl font-medium tracking-tight">
-              Shared Receipt
+              {receipt.title}
             </h1>
             <p className="text-sm text-muted-foreground">
               Created on {formattedDate}
