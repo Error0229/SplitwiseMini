@@ -57,6 +57,7 @@ import {
   TooltipTrigger,
   TooltipProvider,
 } from "@/components/ui/tooltip";
+import { publishReceipt, SharedReceipt } from "./actions/share";
 
 // Move interfaces to a separate types file
 import type { Person, ReceiptItem, EditableItem } from "./types";
@@ -140,6 +141,8 @@ export default function MoneySplitApp() {
   const [splitItemsPageSize, setSplitItemsPageSize] = useState(5);
   const [unsplitItemsPage, setUnsplitItemsPage] = useState(1);
   const [unsplitItemsPageSize, setUnsplitItemsPageSize] = useState(5);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Add person
@@ -1163,6 +1166,29 @@ export default function MoneySplitApp() {
     return "";
   };
 
+  // Publish receipt
+  const handlePublishReceipt = async () => {
+    setIsPublishing(true);
+    try {
+      const receiptData: SharedReceipt = {
+        id: crypto.randomUUID(),
+        people,
+        items: receiptItems,
+        totals: calculateTotals(),
+        grandTotal: receiptItems.reduce((sum, item) => sum + item.price, 0),
+        createdAt: new Date().toISOString(),
+      };
+
+      const url = await publishReceipt(receiptData);
+      setPublishedUrl(url);
+    } catch (error) {
+      console.error("Error publishing receipt:", error);
+      setOcrError("Failed to publish receipt");
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
   // Render
   return (
     <div className="container mx-auto p-4 max-w-6xl">
@@ -1606,6 +1632,49 @@ export default function MoneySplitApp() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Publish Receipt Button - New Section */}
+          <div className="flex justify-end mt-4 gap-2">
+            <Button
+              variant="outline"
+              onClick={handlePublishReceipt}
+              disabled={isPublishing || people.length === 0}
+            >
+              {isPublishing ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Publishing...
+                </>
+              ) : (
+                <>
+                  <Eye className="h-4 w-4 mr-2" />
+                  Publish Receipt
+                </>
+              )}
+            </Button>
+          </div>
+
+          {publishedUrl && (
+            <div className="mt-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900 rounded-lg">
+              <p className="text-green-700 dark:text-green-300">
+                Receipt published! Share this link:
+              </p>
+              <a
+                href={publishedUrl.replace(
+                  "blob.vercel-storage.com",
+                  window.location.host
+                )}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 dark:text-blue-400 break-all"
+              >
+                {publishedUrl.replace(
+                  "blob.vercel-storage.com",
+                  window.location.host
+                )}
+              </a>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
 
