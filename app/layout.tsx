@@ -4,7 +4,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 
 export const metadata: Metadata = {
   title: "Splitwise Mini",
-  description: "Not another splitwise clone!",
+  description: "This is not Splitwise, don't sue me.",
   icons: {
     icon: "/logo.png",
   },
