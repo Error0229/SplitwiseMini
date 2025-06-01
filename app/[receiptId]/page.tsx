@@ -18,7 +18,7 @@ import {
   TooltipTrigger,
   TooltipProvider,
 } from "@/components/ui/tooltip";
-import { SharedReceipt } from "@/app/types";
+import { SharedReceipt } from "@/types";
 import crypto from "crypto";
 
 export const dynamic = "force-dynamic";

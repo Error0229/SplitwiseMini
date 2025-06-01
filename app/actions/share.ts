@@ -1,7 +1,7 @@
 "use server"
 
 import { put } from '@vercel/blob';
-import { SharedReceipt } from '../types';
+import { SharedReceipt } from '../../types';
 
 
 
