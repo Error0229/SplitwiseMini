@@ -1170,8 +1170,9 @@ export default function MoneySplitApp() {
   const handlePublishReceipt = async () => {
     setIsPublishing(true);
     try {
+      const id = crypto.randomUUID();
       const receiptData: SharedReceipt = {
-        id: crypto.randomUUID(),
+        id,
         people,
         items: receiptItems,
         totals: calculateTotals(),
@@ -1180,7 +1181,7 @@ export default function MoneySplitApp() {
       };
 
       const url = await publishReceipt(receiptData);
-      setPublishedUrl(url);
+      setPublishedUrl(id);
     } catch (error) {
       console.error("Error publishing receipt:", error);
       setOcrError("Failed to publish receipt");
@@ -1660,18 +1661,12 @@ export default function MoneySplitApp() {
                 Receipt published! Share this link:
               </p>
               <a
-                href={publishedUrl.replace(
-                  "blob.vercel-storage.com",
-                  window.location.host
-                )}
+                href={new URL(publishedUrl, window.location.origin).toString()}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-blue-600 dark:text-blue-400 break-all"
               >
-                {publishedUrl.replace(
-                  "blob.vercel-storage.com",
-                  window.location.host
-                )}
+                {new URL(publishedUrl, window.location.origin).toString()}
               </a>
             </div>
           )}
