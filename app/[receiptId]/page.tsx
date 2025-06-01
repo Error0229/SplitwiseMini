@@ -19,6 +19,7 @@ import {
   TooltipTrigger,
   TooltipProvider,
 } from "@/components/ui/tooltip";
+import crypto from "crypto";
 
 export const dynamic = "force-dynamic";
 
@@ -108,6 +109,40 @@ export default async function SharedReceiptPage({
       default:
         return "Other Items";
     }
+  };
+
+  // Add this helper function near the top of the file
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((part) => part[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  // Add these helper functions after the existing ones
+  const getGravatarUrl = (name: string, size: number = 40) => {
+    const hash = crypto
+      .createHash("md5")
+      .update(name.toLowerCase().trim())
+      .digest("hex");
+    return `https://www.gravatar.com/avatar/${hash}?s=${size}&d=identicon&r=PG`;
+  };
+
+  const countPersonItems = (person: any, items: any[]) => {
+    return items.reduce((count, item) => {
+      if (
+        (item.splitType === "individual" && item.assignedTo === person.id) ||
+        (item.splitType === "equal" &&
+          item.equalSplitPeople?.includes(person.id)) ||
+        (item.splitType === "unequal" &&
+          item.unequalSplit?.some((s: any) => s.personId === person.id))
+      ) {
+        return count + 1;
+      }
+      return count;
+    }, 0);
   };
 
   return (
@@ -303,7 +338,23 @@ export default async function SharedReceiptPage({
                   return (
                     <div key={person.id} className="rounded-lg border p-6">
                       <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-xl font-semibold">{person.name}</h3>
+                        <div className="flex items-center gap-3">
+                          <Image
+                            src={getGravatarUrl(person.name)}
+                            alt={person.name}
+                            width={40}
+                            height={40}
+                            className="rounded-full"
+                          />
+                          <div>
+                            <h3 className="text-xl font-semibold">
+                              {person.name}
+                            </h3>
+                            <p className="text-sm text-muted-foreground">
+                              {countPersonItems(person, receipt.items)} items
+                            </p>
+                          </div>
+                        </div>
                         <div className="text-xl font-bold">
                           ${receipt.totals[person.id]?.toFixed(2)}
                         </div>
@@ -327,7 +378,7 @@ export default async function SharedReceiptPage({
                                         <span className="font-medium">
                                           {item.name}
                                         </span>
-                                        <TooltipProvider>
+                                        <TooltipProvider delayDuration={150}>
                                           <Tooltip>
                                             <TooltipTrigger asChild>
                                               <Badge
