@@ -750,7 +750,7 @@ export default function MoneySplitApp() {
             setUnsplitItemsPage={setUnsplitItemsPage}
             draggedItem={draggedItem}
             handleDragStart={handleDragStart}
-            handleDragOver={handleDragOver}
+            // handleDragOver={handleDragOver}
             handleDropOnPerson={handleDropOnPerson}
             handleDropOnSplitArea={handleDropOnSplitArea}
             unsplitItemsCount={unsplitItems.length}
