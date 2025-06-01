@@ -998,49 +998,56 @@ export default function MoneySplitApp() {
 
   // Update the drag-split tab content
   const renderDragSplit = () => (
-    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-      {/* Unsplit Items with pagination */}
-      <div className="lg:col-span-1">
-        <h3 className="font-semibold mb-4 text-center">Unsplit Items</h3>
-        <div className="border-2 border-dashed border-gray-300 rounded-lg">
-          <div className="min-h-[200px] max-h-[400px] overflow-y-auto p-4">
-            {paginatedUnsplitItems.map((item) => (
-              <div
-                key={item.id}
-                draggable
-                onDragStart={() => handleDragStart(item)}
-                className="p-3 mb-2 dark:bg-red-950/30 bg-red-50 dark:border-red-900 border-red-200 border rounded-lg cursor-move hover:bg-red-100 dark:hover:bg-red-950/50 transition-colors"
-              >
-                <div className="font-medium text-sm">{item.name}</div>
-                <div className="text-xs text-muted-foreground">
-                  ${item.price.toFixed(2)}
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      {/* Unsplit Items - Take 3 columns */}
+      <div className="lg:col-span-3">
+        <div className="sticky top-4">
+          <h3 className="font-semibold mb-4 text-center">Unsplit Items</h3>
+          <div className="border-2 border-dashed border-gray-300 rounded-lg">
+            <div className="min-h-[200px] max-h-[calc(100vh-240px)] overflow-y-auto p-4">
+              {paginatedUnsplitItems.map((item) => (
+                <div
+                  key={item.id}
+                  draggable
+                  onDragStart={() => handleDragStart(item)}
+                  className="p-3 mb-2 dark:bg-red-950/30 bg-red-50 dark:border-red-900 border-red-200 border rounded-lg cursor-move hover:bg-red-100 dark:hover:bg-red-950/50 transition-colors"
+                >
+                  <div className="font-medium text-sm">{item.name}</div>
+                  <div className="text-xs text-muted-foreground">
+                    ${item.price.toFixed(2)}
+                  </div>
                 </div>
-              </div>
-            ))}
-            {unsplitItems.length === 0 && (
-              <div className="text-center text-muted-foreground py-8">
-                <p>All items have been split!</p>
-              </div>
+              ))}
+              {unsplitItems.length === 0 && (
+                <div className="text-center text-muted-foreground py-8">
+                  <p>All items have been split!</p>
+                </div>
+              )}
+            </div>
+            {unsplitItems.length > 0 && (
+              <CompactPagination
+                currentPage={unsplitItemsPage}
+                setCurrentPage={setUnsplitItemsPage}
+                totalPages={totalUnsplitPages}
+                totalItems={unsplitItems.length}
+              />
             )}
           </div>
-          {unsplitItems.length > 0 && (
-            <CompactPagination
-              currentPage={unsplitItemsPage}
-              setCurrentPage={setUnsplitItemsPage}
-              totalPages={totalUnsplitPages}
-              totalItems={unsplitItems.length}
-            />
-          )}
         </div>
       </div>
 
-      {/* People Columns */}
-      <div className="lg:col-span-2">
+      {/* People Columns - Take 6 columns */}
+      <div className="lg:col-span-6">
         <h3 className="font-semibold mb-4 text-center">People</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[calc(100vh-180px)] overflow-y-auto pr-2">
           {people.map((person) => (
             <div key={person.id} className="space-y-2">
-              <h4 className="font-medium text-center">{person.name}</h4>
+              <h4 className="font-medium text-center sticky top-0 bg-background py-2 z-10">
+                {person.name}
+                <div className="text-sm font-normal text-muted-foreground">
+                  Total: ${totals[person.id]?.toFixed(2) || "0.00"}
+                </div>
+              </h4>
               <div
                 onDragOver={handleDragOver}
                 onDrop={() => handleDropOnPerson(person.id)}
@@ -1053,27 +1060,29 @@ export default function MoneySplitApp() {
                   {splitItemsByPerson[person.id]?.map((item) => (
                     <div
                       key={`${item.id}-${person.id}`}
-                      className="p-2 dark:bg-blue-950/30 bg-blue-50 dark:border-blue-900 border-blue-200 border rounded text-xs"
+                      className="p-2 dark:bg-blue-950/30 bg-blue-50 dark:border-blue-900 border-blue-200 border rounded text-xs flex items-center justify-between"
                     >
-                      <div className="font-medium">{item.name}</div>
-                      <div className="text-muted-foreground">
-                        {item.splitType === "individual" &&
-                          `$${item.price.toFixed(2)}`}
-                        {item.splitType === "equal" &&
-                          `$${(
-                            item.price / (item.equalSplitPeople?.length || 1)
-                          ).toFixed(2)} (split)`}
-                        {item.splitType === "unequal" &&
-                          `$${(
-                            item.unequalSplit?.find(
-                              (s) => s.personId === person.id
-                            )?.amount || 0
-                          ).toFixed(2)} (custom)`}
+                      <div className="flex-1">
+                        <div className="font-medium">{item.name}</div>
+                        <div className="text-muted-foreground">
+                          {item.splitType === "individual" &&
+                            `$${item.price.toFixed(2)}`}
+                          {item.splitType === "equal" &&
+                            `$${(
+                              item.price / (item.equalSplitPeople?.length || 1)
+                            ).toFixed(2)} (split)`}
+                          {item.splitType === "unequal" &&
+                            `$${(
+                              item.unequalSplit?.find(
+                                (s) => s.personId === person.id
+                              )?.amount || 0
+                            ).toFixed(2)} (custom)`}
+                        </div>
                       </div>
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="h-4 w-4 p-0 mt-1"
+                        className="h-6 w-6 p-0 ml-2 flex items-center justify-center"
                         onClick={() => resetItemToUnsplit(item.id)}
                       >
                         <ArrowLeft className="h-3 w-3" />
@@ -1082,36 +1091,35 @@ export default function MoneySplitApp() {
                   ))}
                 </div>
               </div>
-              <div className="text-center font-semibold">
-                Total: ${totals[person.id]?.toFixed(2) || "0.00"}
-              </div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Split Areas */}
-      <div className="lg:col-span-1">
-        <h3 className="font-semibold mb-4 text-center">Split Options</h3>
-        <div className="space-y-4">
-          <div
-            onDragOver={handleDragOver}
-            onDrop={() => handleDropOnSplitArea("equal")}
-            className="p-4 border-2 border-dashed border-green-300 rounded-lg text-center hover:border-green-400 transition-colors min-h-[100px] flex flex-col justify-center"
-          >
-            <div className="font-medium text-green-700">Equal Split</div>
-            <div className="text-sm text-muted-foreground">
-              Split equally among selected people
+      {/* Split Areas - Take 3 columns */}
+      <div className="lg:col-span-3">
+        <div className="sticky top-4">
+          <h3 className="font-semibold mb-4 text-center">Split Options</h3>
+          <div className="space-y-4">
+            <div
+              onDragOver={handleDragOver}
+              onDrop={() => handleDropOnSplitArea("equal")}
+              className="p-4 border-2 border-dashed border-green-300 rounded-lg text-center hover:border-green-400 transition-colors min-h-[100px] flex flex-col justify-center"
+            >
+              <div className="font-medium text-green-700">Equal Split</div>
+              <div className="text-sm text-muted-foreground">
+                Split equally among selected people
+              </div>
             </div>
-          </div>
-          <div
-            onDragOver={handleDragOver}
-            onDrop={() => handleDropOnSplitArea("unequal")}
-            className="p-4 border-2 border-dashed border-orange-300 rounded-lg text-center hover:border-orange-400 transition-colors min-h-[100px] flex flex-col justify-center"
-          >
-            <div className="font-medium text-orange-700">Custom Split</div>
-            <div className="text-sm text-muted-foreground">
-              Set custom amounts for each person
+            <div
+              onDragOver={handleDragOver}
+              onDrop={() => handleDropOnSplitArea("unequal")}
+              className="p-4 border-2 border-dashed border-orange-300 rounded-lg text-center hover:border-orange-400 transition-colors min-h-[100px] flex flex-col justify-center"
+            >
+              <div className="font-medium text-orange-700">Custom Split</div>
+              <div className="text-sm text-muted-foreground">
+                Set custom amounts for each person
+              </div>
             </div>
           </div>
         </div>
