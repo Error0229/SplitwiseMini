@@ -96,6 +96,20 @@ export default async function SharedReceiptPage({
     };
   };
 
+  // Add this helper function near the top of the file
+  const getSplitTypeLabel = (type: string) => {
+    switch (type) {
+      case "individual":
+        return "Paying Full Amount";
+      case "equal":
+        return "Equal Splits";
+      case "unequal":
+        return "Custom Splits";
+      default:
+        return "Other Items";
+    }
+  };
+
   return (
     <div className="container mx-auto p-4 max-w-6xl">
       <div className="mb-6 flex items-center justify-between">
@@ -203,7 +217,7 @@ export default async function SharedReceiptPage({
                             <TooltipTrigger asChild>
                               <Badge>{splitDetails.type}</Badge>
                             </TooltipTrigger>
-                            <TooltipContent>
+                            <TooltipContent side="right">
                               <p className="whitespace-pre-line">
                                 {splitDetails.tooltip}
                               </p>
@@ -254,71 +268,157 @@ export default async function SharedReceiptPage({
               <CardDescription>What each person is paying for</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-6">
-                {receipt.people.map((person) => (
-                  <div key={person.id} className="space-y-3">
-                    <div className="flex justify-between items-center">
-                      <h3 className="text-lg font-medium">{person.name}</h3>
-                      <span className="text-lg font-bold">
-                        ${receipt.totals[person.id]?.toFixed(2)}
-                      </span>
-                    </div>
-                    <div className="space-y-2 ml-4">
-                      {receipt.items.map((item) => {
-                        const splitDetails = getItemSplitDetails(item);
-                        let personAmount = 0;
+              <div className="space-y-8">
+                {receipt.people.map((person) => {
+                  const personItems = receipt.items.reduce((acc: any, item) => {
+                    let personAmount = 0;
+                    let splitType = item.splitType;
 
-                        if (
-                          item.splitType === "individual" &&
-                          item.assignedTo === person.id
-                        ) {
-                          personAmount = item.price;
-                        } else if (
-                          item.splitType === "equal" &&
-                          item.equalSplitPeople?.includes(person.id)
-                        ) {
-                          personAmount =
-                            item.price / item.equalSplitPeople.length;
-                        } else if (item.splitType === "unequal") {
-                          const split = item.unequalSplit?.find(
-                            (s: any) => s.personId === person.id
-                          );
-                          if (split) personAmount = split.amount;
-                        }
+                    if (
+                      item.splitType === "individual" &&
+                      item.assignedTo === person.id
+                    ) {
+                      personAmount = item.price;
+                    } else if (
+                      item.splitType === "equal" &&
+                      item.equalSplitPeople?.includes(person.id)
+                    ) {
+                      personAmount = item.price / item.equalSplitPeople.length;
+                    } else if (item.splitType === "unequal") {
+                      const split = item.unequalSplit?.find(
+                        (s: any) => s.personId === person.id
+                      );
+                      if (split) personAmount = split.amount;
+                    }
 
-                        if (personAmount > 0) {
-                          return (
-                            <div
-                              key={item.id}
-                              className="flex justify-between items-center py-1"
-                            >
-                              <div>
-                                <span>{item.name}</span>
-                                <TooltipProvider delayDuration={150}>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Badge variant="outline" className="ml-2">
-                                        {splitDetails.type}
-                                      </Badge>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p className="whitespace-pre-line">
-                                        {splitDetails.tooltip}
-                                      </p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
+                    if (personAmount > 0) {
+                      if (!acc[splitType]) acc[splitType] = [];
+                      acc[splitType].push({ item, amount: personAmount });
+                    }
+                    return acc;
+                  }, {});
+
+                  const splitTypes = Object.keys(personItems);
+
+                  return (
+                    <div key={person.id} className="rounded-lg border p-6">
+                      <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-xl font-semibold">{person.name}</h3>
+                        <div className="text-xl font-bold">
+                          ${receipt.totals[person.id]?.toFixed(2)}
+                        </div>
+                      </div>
+
+                      {splitTypes.length > 0 ? (
+                        <div className="space-y-6">
+                          {splitTypes.map((type) => (
+                            <div key={type} className="space-y-2">
+                              <h4 className="font-medium text-sm text-muted-foreground mb-3">
+                                {getSplitTypeLabel(type)}
+                              </h4>
+                              <div className="grid gap-2">
+                                {personItems[type].map(
+                                  ({ item, amount }: any) => (
+                                    <div
+                                      key={item.id}
+                                      className="flex items-center justify-between py-2 px-3 bg-muted/40 rounded-md"
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-medium">
+                                          {item.name}
+                                        </span>
+                                        <TooltipProvider>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <Badge
+                                                variant="outline"
+                                                className="ml-2"
+                                              >
+                                                {type === "equal"
+                                                  ? `${item.equalSplitPeople?.length} way split`
+                                                  : type}
+                                              </Badge>
+                                            </TooltipTrigger>
+                                            <TooltipContent side="right">
+                                              <p className="whitespace-pre-line">
+                                                {type === "equal"
+                                                  ? `Total: $${item.price.toFixed(
+                                                      2
+                                                    )}\nPer person: $${(
+                                                      item.price /
+                                                      item.equalSplitPeople
+                                                        ?.length
+                                                    ).toFixed(
+                                                      2
+                                                    )}\nSplit between: ${item.equalSplitPeople
+                                                      .map(
+                                                        (id: string) =>
+                                                          `${
+                                                            receipt.people.find(
+                                                              (p) => p.id === id
+                                                            )?.name
+                                                          }`
+                                                      )
+                                                      .join(", ")}`
+                                                  : type === "individual"
+                                                  ? `Paying full amount\nTotal: $${item.price.toFixed(
+                                                      2
+                                                    )}`
+                                                  : `Custom split\nTotal: $${item.price.toFixed(
+                                                      2
+                                                    )}\nBreakdown:\n${item.unequalSplit
+                                                      .map(
+                                                        (split: any) =>
+                                                          `• ${
+                                                            receipt.people.find(
+                                                              (p) =>
+                                                                p.id ===
+                                                                split.personId
+                                                            )?.name
+                                                          }: $${split.amount.toFixed(
+                                                            2
+                                                          )}`
+                                                      )
+                                                      .join("\n")}`}
+                                              </p>
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        </TooltipProvider>
+                                      </div>
+                                      <span className="font-semibold">
+                                        ${amount.toFixed(2)}
+                                      </span>
+                                    </div>
+                                  )
+                                )}
+                                <div className="flex justify-between text-sm text-muted-foreground px-3">
+                                  <span>
+                                    Subtotal for{" "}
+                                    {getSplitTypeLabel(type).toLowerCase()}
+                                  </span>
+                                  <span>
+                                    $
+                                    {personItems[type]
+                                      .reduce(
+                                        (sum: number, { amount }: any) =>
+                                          sum + amount,
+                                        0
+                                      )
+                                      .toFixed(2)}
+                                  </span>
+                                </div>
                               </div>
-                              <span>${personAmount.toFixed(2)}</span>
                             </div>
-                          );
-                        }
-                        return null;
-                      })}
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center text-muted-foreground py-4">
+                          No items assigned
+                        </div>
+                      )}
                     </div>
-                    <Separator />
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
