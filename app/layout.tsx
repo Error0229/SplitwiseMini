@@ -5,9 +5,11 @@ import { ThemeProvider } from "@/components/theme-provider";
 export const metadata: Metadata = {
   title: "Splitwise Mini",
   description: "This is not Splitwise, don't sue me.",
+  manifest: "/manifest.json",
   icons: {
     icon: "/logo.png",
   },
+  themeColor: "#ffffff",
 };
 
 export default function RootLayout({
