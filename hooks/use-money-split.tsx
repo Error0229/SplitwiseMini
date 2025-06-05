@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useMemo, useCallback } from "react";
+import { downscaleImage } from "@/lib/image";
 import { useVirtualizer } from "@tanstack/react-virtual";
 
 import { Person, ReceiptItem, EditableItem, SharedReceipt } from "@/types";
@@ -106,8 +107,9 @@ export function useMoneySplit() {
     setOcrSuccess(null);
 
     try {
+      const compressed = await downscaleImage(file);
       const formData = new FormData();
-      formData.append("receipt", file);
+      formData.append("receipt", compressed);
       formData.append("language", selectedLanguage);
 
       const result = await processReceiptOCR(formData);
