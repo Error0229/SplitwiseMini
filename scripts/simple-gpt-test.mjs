@@ -1,5 +1,6 @@
 import fs from 'fs/promises';
 import OpenAI from 'openai';
+import { put } from '@vercel/blob';
 
 const token = process.env.GITHUB_TOKEN;
 const endpoint = 'https://models.github.ai/inference';
@@ -9,11 +10,8 @@ const bytes = await fs.readFile(new URL('../public/LargeReceipt.jpg', import.met
 
 const client = new OpenAI({ baseURL: endpoint, apiKey: token });
 
-// Upload file for vision API
-const file = await client.files.create({
-  file: await OpenAI.toFile(bytes, 'LargeReceipt.jpg', { type: 'image/jpeg' }),
-  purpose: 'vision'
-});
+// Upload the image to Vercel Blob and use the URL with the OpenAI API
+const blob = await put('tests/LargeReceipt.jpg', bytes, { access: 'public' });
 
 const res = await client.responses.create({
   model,
@@ -22,7 +20,7 @@ const res = await client.responses.create({
       role: 'user',
       content: [
         { type: 'input_text', text: 'Extract items' },
-        { type: 'input_image', file_id: file.id }
+        { type: 'input_image', image_url: blob.url }
       ]
     }
   ],

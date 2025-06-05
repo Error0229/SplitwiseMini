@@ -1,6 +1,7 @@
 "use server"
 
 import OpenAI from "openai"
+import { put } from "@vercel/blob"
 
 interface OCRResponse {
   success: boolean
@@ -311,13 +312,14 @@ export async function processReceiptWithGPT(
       apiKey: process.env.GITHUB_TOKEN,
     })
 
-    // Upload the image to OpenAI's files API for vision use
-    const openAiFile = await client.files.create({
-      file: await OpenAI.toFile(await file.arrayBuffer(), file.name, {
-        type: file.type,
-      }),
-      purpose: "vision",
-    })
+    // Upload the image to Vercel Blob and use the URL with the OpenAI API
+    const upload = await put(
+      `receipts/${Date.now()}-${file.name}`,
+      file,
+      {
+        access: "public",
+      },
+    )
 
     const response = await client.responses.create({
       model: "openai/gpt-4.1",
@@ -326,7 +328,7 @@ export async function processReceiptWithGPT(
           role: "user",
           content: [
             { type: "input_text", text: "Scan this receipt and output items as JSON." },
-            { type: "input_image", file_id: openAiFile.id },
+            { type: "input_image", image_url: upload.url },
           ],
         },
       ],
