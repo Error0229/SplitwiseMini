@@ -1,5 +1,8 @@
 "use server"
 
+import OpenAI from "openai"
+import { put } from "@vercel/blob"
+
 interface OCRResponse {
   success: boolean
   items?: Array<{
@@ -291,4 +294,145 @@ function cleanItemName(name: string): string {
     .replace(/\s+/g, " ") // Normalize whitespace
     .replace(/[:-]+$/, "") // Remove trailing colons or dashes
     .trim()
+}
+
+// ─── GPT-4.1 Based OCR ---------------------------------------------------
+
+export async function processReceiptWithGPT(
+  formData: FormData,
+): Promise<OCRResponse> {
+  try {
+    const file = formData.get("receipt") as File
+    if (!file) {
+      return { success: false, error: "No file provided" }
+    }
+
+    const client = new OpenAI({
+      baseURL: "https://models.github.ai/inference",
+      apiKey: process.env.GITHUB_TOKEN,
+    })
+
+    // Upload the image to Vercel Blob and use the URL with the OpenAI API
+    const upload = await put(
+      `receipts/image/${Date.now()}-${file.name}`,
+      file,
+      {
+        access: "public",
+      },
+    )
+
+    // Use the same structure as in simple-gpt-test.mjs
+    const response = await client.chat.completions.create({
+      messages: [
+        {
+          role: "system",
+          content: [
+            { type: "text", text: "You are a multilingual receipt scanning AI. Convert the provided receipt image into a structured JSON format. Ensure the output includes all relevant fields such as date, total amount, currency, items, and any applicable taxes. Extract text accurately and preserve any available formatting details." },
+          ],
+        },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "Please analyze the receipt and provide a structured JSON output with all relevant details. If the product name seems not complete, please fill up the possible product name based on the price" },
+            { type: "image_url", image_url: { url: upload.url } }
+          ]
+        }
+      ],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          "name": "MultilingualReceipt",
+          "description": "A schema for extracting structured, multilingual receipt data from OCR.",
+          "schema": {
+            "type": "object",
+            "properties": {
+              "merchant": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string", "description": "Merchant's name as printed on the receipt" },
+                  "address": { "type": "string", "description": "Merchant's address" },
+                  "phone": { "type": "string", "description": "Merchant's contact number" },
+                  "tax_id": { "type": "string", "description": "Merchant's tax identification number" }
+                },
+                "required": ["name"]
+              },
+              "receipt": {
+                "type": "object",
+                "properties": {
+                  "number": { "type": "string", "description": "Receipt number or identifier" },
+                  "date": { "type": "string", "format": "date", "description": "Date of the transaction" },
+                  "time": { "type": "string", "description": "Time of the transaction" },
+                  "currency": { "type": "string", "description": "Currency code (e.g., USD, EUR, TWD)" },
+                  "language": { "type": "string", "description": "Language code of the receipt (e.g., en, zh, ja)" }
+                },
+                "required": ["date", "currency"]
+              },
+              "items": {
+                "type": "array",
+                "description": "List of items purchased",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "description": { "type": "string", "description": "Item description" },
+                    "quantity": { "type": "number", "description": "Quantity purchased" },
+                    "unit_price": { "type": "number", "description": "Price per unit" },
+                    "total_price": { "type": "number", "description": "Total price for the item" }
+                  },
+                  "required": ["description", "total_price"]
+                }
+              },
+              "totals": {
+                "type": "object",
+                "properties": {
+                  "subtotal": { "type": "number", "description": "Subtotal before taxes and discounts" },
+                  "tax": { "type": "number", "description": "Total tax amount" },
+                  "discount": { "type": "number", "description": "Total discount amount" },
+                  "total": { "type": "number", "description": "Final total amount to be paid" }
+                },
+                "required": ["total"]
+              },
+              "payment": {
+                "type": "object",
+                "properties": {
+                  "method": { "type": "string", "description": "Payment method used (e.g., cash, credit card)" },
+                  "card_last4": { "type": "string", "description": "Last four digits of the card used, if applicable" }
+                },
+                "required": ["method"]
+              }
+            },
+            "required": ["merchant", "receipt", "items", "totals", "payment"]
+          }
+        }
+      },
+      temperature: 0,
+      model: "openai/gpt-4.1"
+    })
+
+    const text = response.choices?.[0]?.message?.content || "{}"
+    let parsed: any = {}
+    try {
+      parsed = JSON.parse(text)
+    } catch {
+      return { success: false, error: "Failed to parse JSON from model output", rawText: text }
+    }
+    const rawItems = parsed.items || []
+    const items = rawItems
+      .map((i: any) => ({
+        name: String(i.description || i.name || "").trim(),
+        price: Number.parseFloat(i.total_price ?? i.price ?? 0),
+      }))
+      .filter((i: any) => i.name && !Number.isNaN(i.price))
+
+    if (items.length === 0) {
+      return { success: false, error: "No items parsed", rawText: text }
+    }
+
+    return { success: true, items, rawText: text }
+  } catch (error) {
+    console.error("GPT OCR error:", error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error occurred",
+    }
+  }
 }

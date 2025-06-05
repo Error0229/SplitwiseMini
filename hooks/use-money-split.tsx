@@ -5,7 +5,7 @@ import { downscaleImage } from "@/lib/image";
 import { useVirtualizer } from "@tanstack/react-virtual";
 
 import { Person, ReceiptItem, EditableItem, SharedReceipt } from "@/types";
-import { processReceiptOCR } from "@/app/actions/ocr";
+import { processReceiptOCR, processReceiptWithGPT } from "@/app/actions/ocr";
 import { publishReceipt } from "@/app/actions/share";
 import { get } from "lodash";
 
@@ -134,6 +134,50 @@ export function useMoneySplit() {
         setOcrError(
           "No items with prices were found in the receipt. You can add items manually below."
         );
+      } else {
+        setOcrError(result.error || "Failed to process receipt");
+      }
+    } catch (error) {
+      setOcrError("Error processing receipt. Please try again.");
+    } finally {
+      setIsProcessingOCR(false);
+      event.target.value = "";
+    }
+  };
+
+  const handleReceiptUploadWithGPT = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsProcessingOCR(true);
+    setOcrError(null);
+    setOcrSuccess(null);
+
+    try {
+      const compressed = await downscaleImage(file);
+      const formData = new FormData();
+      formData.append("receipt", compressed);
+
+      const result = await processReceiptWithGPT(formData);
+
+      if (result.success && result.items && result.items.length > 0) {
+        const newEditableItems: EditableItem[] = result.items.map(
+          (item, index) => ({
+            id: (Date.now() + index).toString(),
+            name: item.name,
+            price: item.price.toString(),
+            isEditing: false,
+          })
+        );
+
+        setEditableItems(newEditableItems);
+        setActiveTab("receipt");
+        setOcrSuccess(
+          `Successfully extracted ${result.items.length} items from your receipt!`
+        );
+        setOcrError(null);
       } else {
         setOcrError(result.error || "Failed to process receipt");
       }
@@ -624,6 +668,7 @@ export function useMoneySplit() {
     fileInputRef,
     setSelectedLanguage,
     handleReceiptUpload,
+    handleReceiptUploadWithGPT,
     exportData,
     importData,
     updateEditableItem,
