@@ -24,13 +24,19 @@ export default function MoneySplitApp() {
         <div className="flex items-center gap-3">
           <img src="/logo.png" alt="Logo" className="w-10 h-10 dark:invert" />
           <div>
-            <h1 className="text-3xl font-medium tracking-tight">Splitwise Mini</h1>
+            <h1 className="text-3xl font-medium tracking-tight">
+              Splitwise Mini
+            </h1>
           </div>
         </div>
         <ThemeToggle />
       </div>
 
-      <Tabs value={ms.activeTab} onValueChange={ms.setActiveTab} className="w-full">
+      <Tabs
+        value={ms.activeTab}
+        onValueChange={ms.setActiveTab}
+        className="w-full"
+      >
         <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="people" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
@@ -85,7 +91,8 @@ export default function MoneySplitApp() {
             paginatedItems={ms.paginatedItems}
             fileInputRef={ms.fileInputRef}
             setSelectedLanguage={ms.setSelectedLanguage}
-            handleReceiptUpload={ms.handleReceiptUpload}
+            // handleReceiptUpload={ms.handleReceiptUpload}
+            handleReceiptUpload={ms.handleReceiptUploadWithGPT}
             exportData={ms.exportData}
             importData={ms.importData}
             updateEditableItem={debounce(ms.updateEditableItem, 150)}
