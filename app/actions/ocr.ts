@@ -240,7 +240,7 @@ function isHeaderOrFooter(line: string): boolean {
 
 function isValidItem(name: string, price: number): boolean {
   return (
-    name &&
+    !!name &&
     name.length > 1 &&
     name.length < 100 &&
     price > 0 &&
