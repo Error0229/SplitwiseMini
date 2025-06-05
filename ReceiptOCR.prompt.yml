@@ -9,9 +9,9 @@ messages:
   - role: user
     content: |
       Scan {{image}} into the Json file following the schema.
-model: openai/gpt-4o
+model: openai/gpt-4.1
 modelParameters:
-  max_tokens: 4096
+  max_tokens: 32768
 responseFormat: json_schema
 jsonSchema: |
   {
