@@ -1,0 +1,79 @@
+messages:
+  - role: system
+    content: >-
+      You are a multilingual receipt scanning AI. Convert the provided receipt
+      image into a structured JSON format. Ensure the output includes all
+      relevant fields such as date, total amount, currency, items, and any
+      applicable taxes. Extract text accurately and preserve any available
+      formatting details.
+  - role: user
+    content: |
+      Scan {{image}} into the Json file following the schema.
+model: openai/gpt-4o
+modelParameters:
+  max_tokens: 4096
+responseFormat: json_schema
+jsonSchema: |
+  {
+    "name": "MultilingualReceipt",
+    "description": "A schema for extracting structured, multilingual receipt data from OCR.",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "merchant": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string", "description": "Merchant's name as printed on the receipt" },
+            "address": { "type": "string", "description": "Merchant's address" },
+            "phone": { "type": "string", "description": "Merchant's contact number" },
+            "tax_id": { "type": "string", "description": "Merchant's tax identification number" }
+          },
+          "required": ["name"]
+        },
+        "receipt": {
+          "type": "object",
+          "properties": {
+            "number": { "type": "string", "description": "Receipt number or identifier" },
+            "date": { "type": "string", "format": "date", "description": "Date of the transaction" },
+            "time": { "type": "string", "description": "Time of the transaction" },
+            "currency": { "type": "string", "description": "Currency code (e.g., USD, EUR, TWD)" },
+            "language": { "type": "string", "description": "Language code of the receipt (e.g., en, zh, ja)" }
+          },
+          "required": ["date", "currency"]
+        },
+        "items": {
+          "type": "array",
+          "description": "List of items purchased",
+          "items": {
+            "type": "object",
+            "properties": {
+              "description": { "type": "string", "description": "Item description" },
+              "quantity": { "type": "number", "description": "Quantity purchased" },
+              "unit_price": { "type": "number", "description": "Price per unit" },
+              "total_price": { "type": "number", "description": "Total price for the item" }
+            },
+            "required": ["description", "total_price"]
+          }
+        },
+        "totals": {
+          "type": "object",
+          "properties": {
+            "subtotal": { "type": "number", "description": "Subtotal before taxes and discounts" },
+            "tax": { "type": "number", "description": "Total tax amount" },
+            "discount": { "type": "number", "description": "Total discount amount" },
+            "total": { "type": "number", "description": "Final total amount to be paid" }
+          },
+          "required": ["total"]
+        },
+        "payment": {
+          "type": "object",
+          "properties": {
+            "method": { "type": "string", "description": "Payment method used (e.g., cash, credit card)" },
+            "card_last4": { "type": "string", "description": "Last four digits of the card used, if applicable" }
+          },
+          "required": ["method"]
+        }
+      },
+      "required": ["merchant", "receipt", "items", "totals", "payment"]
+    }
+  }
