@@ -306,45 +306,36 @@ export async function processReceiptWithGPT(
       return { success: false, error: "No file provided" }
     }
 
-    const bytes = await file.arrayBuffer()
-    const imageBase64 = Buffer.from(bytes).toString("base64")
-    const imageUrl = `data:${file.type};base64,${imageBase64}`
-
     const client = new OpenAI({
       baseURL: "https://models.github.ai/inference",
       apiKey: process.env.GITHUB_TOKEN,
     })
 
-    const messages: any[] = [
-      {
-        role: "system",
-        content:
-          "You are a multilingual receipt scanning AI. Extract purchased items and their total prices as JSON.",
-      },
-      {
-        role: "user",
-        content: [
-          {
-            type: "text",
-            text: "Scan this receipt and output items as JSON.",
-          },
-          {
-            type: "image_url",
-            image_url: imageUrl,
-          },
-        ],
-      },
-    ]
-
-    const completion = await client.chat.completions.create({
-      model: "openai/gpt-4.1",
-      messages,
-      temperature: 0.2,
-      top_p: 1,
-      response_format: { type: "json_object" },
+    // Upload the image to OpenAI's files API for vision use
+    const openAiFile = await client.files.create({
+      file: await OpenAI.toFile(await file.arrayBuffer(), file.name, {
+        type: file.type,
+      }),
+      purpose: "vision",
     })
 
-    const text = completion.choices[0].message.content || "{}"
+    const response = await client.responses.create({
+      model: "openai/gpt-4.1",
+      input: [
+        {
+          role: "user",
+          content: [
+            { type: "input_text", text: "Scan this receipt and output items as JSON." },
+            { type: "input_image", file_id: openAiFile.id },
+          ],
+        },
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.2,
+      top_p: 1,
+    })
+
+    const text = response.output_text || "{}"
     const parsed = JSON.parse(text)
     const rawItems = parsed.items || []
     const items = rawItems
