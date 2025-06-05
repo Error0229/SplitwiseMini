@@ -1,5 +1,7 @@
 "use server"
 
+import OpenAI from "openai"
+
 interface OCRResponse {
   success: boolean
   items?: Array<{
@@ -291,4 +293,77 @@ function cleanItemName(name: string): string {
     .replace(/\s+/g, " ") // Normalize whitespace
     .replace(/[:-]+$/, "") // Remove trailing colons or dashes
     .trim()
+}
+
+// ─── GPT-4.1 Based OCR ---------------------------------------------------
+
+export async function processReceiptWithGPT(
+  formData: FormData,
+): Promise<OCRResponse> {
+  try {
+    const file = formData.get("receipt") as File
+    if (!file) {
+      return { success: false, error: "No file provided" }
+    }
+
+    const bytes = await file.arrayBuffer()
+    const imageBase64 = Buffer.from(bytes).toString("base64")
+    const imageUrl = `data:${file.type};base64,${imageBase64}`
+
+    const client = new OpenAI({
+      baseURL: "https://models.github.ai/inference",
+      apiKey: process.env.GITHUB_TOKEN,
+    })
+
+    const messages: any[] = [
+      {
+        role: "system",
+        content:
+          "You are a multilingual receipt scanning AI. Extract purchased items and their total prices as JSON.",
+      },
+      {
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: "Scan this receipt and output items as JSON.",
+          },
+          {
+            type: "image_url",
+            image_url: imageUrl,
+          },
+        ],
+      },
+    ]
+
+    const completion = await client.chat.completions.create({
+      model: "openai/gpt-4.1",
+      messages,
+      temperature: 0.2,
+      top_p: 1,
+      response_format: { type: "json_object" },
+    })
+
+    const text = completion.choices[0].message.content || "{}"
+    const parsed = JSON.parse(text)
+    const rawItems = parsed.items || []
+    const items = rawItems
+      .map((i: any) => ({
+        name: String(i.description || i.name || "").trim(),
+        price: Number.parseFloat(i.total_price ?? i.price ?? 0),
+      }))
+      .filter((i: any) => i.name && !Number.isNaN(i.price))
+
+    if (items.length === 0) {
+      return { success: false, error: "No items parsed" }
+    }
+
+    return { success: true, items, rawText: text }
+  } catch (error) {
+    console.error("GPT OCR error:", error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error occurred",
+    }
+  }
 }
